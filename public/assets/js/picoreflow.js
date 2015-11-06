@@ -494,6 +494,7 @@ $(document).ready(function()
                 }
 
                 $('#act_temp').html(parseInt(x.temperature));
+                $('#act_diff').html(parseInt(x.difference));
 
                 if (x.heat > 0.5) { $('#heat').addClass("ds-led-heat-active"); } else { $('#heat').removeClass("ds-led-heat-active"); }
                 if (x.cool > 0.5) { $('#cool').addClass("ds-led-cool-active"); } else { $('#cool').removeClass("ds-led-cool-active"); }

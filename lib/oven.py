@@ -11,27 +11,32 @@ log = logging.getLogger(__name__)
 
 try:
     if (config.max31855 == config.max6675):
-    	log.error("choose (only) one converter IC")
-	exit()
+        log.error("choose (only) one converter IC")
+        exit()
     if config.max31855:
-    	from max31855 import MAX31855, MAX31855Error
-    	log.info("import MAX31855")
+        import Adafruit_GPIO.SPI as SPI
+        import Adafruit_MAX31855.MAX31855 as MAX31855
+#        from max31855 import MAX31855, MAX31855Error
+        log.info("import MAX31855")
     if config.max6675:
-   	from max6675 import MAX6675, MAX6675Error
-    	log.info("import MAX6675")
+        from max6675 import MAX6675, MAX6675Error
+        log.info("import MAX6675")
     sensor_available = True
 except ImportError:
     log.warning("Could not initialize temperature sensor, using dummy values!")
     sensor_available = False
 
 try:
-    import RPi.GPIO as GPIO
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
-    GPIO.setup(config.gpio_heat, GPIO.OUT)
-    GPIO.setup(config.gpio_cool, GPIO.OUT)
+    import Adafruit_BBIO.GPIO as GPIO
+#    import RPi.GPIO as GPIO
+#    GPIO.setmode(GPIO.BCM)
+#    GPIO.setwarnings(False)
+    GPIO.setup(config.gpio_heat1, GPIO.OUT)
+    GPIO.setup(config.gpio_heat2, GPIO.OUT)
+    GPIO.setup(config.gpio_buzzer, GPIO.OUT)
+#    GPIO.setup(config.gpio_cool, GPIO.OUT)
     GPIO.setup(config.gpio_air, GPIO.OUT)
-    GPIO.setup(config.gpio_door, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+#    GPIO.setup(config.gpio_door, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     gpio_available = True
 except ImportError:
@@ -113,7 +118,7 @@ class Oven (threading.Thread):
                         temperature_count = 0
                     # If the heat is on and nothing is changing, reset
                     # The direction or amount of change does not matter
-                    # This prevents runaway in the event of a sensor read failure                   
+                    # This prevents runaway in the event of a sensor read failure
                     if temperature_count > 20:
                         log.info("Error reading sensor, oven temp not responding to heat.")
                         self.reset()
@@ -146,36 +151,45 @@ class Oven (threading.Thread):
         if value:
             self.heat = 1.0
             if gpio_available:
-                GPIO.output(config.gpio_heat, GPIO.LOW)
+#                GPIO.output(config.gpio_heat, GPIO.LOW)
+                GPIO.output(config.gpio_heat1, GPIO.HIGH)
+                GPIO.output(config.gpio_heat2, GPIO.HIGH)
         else:
             self.heat = 0.0
             if gpio_available:
-                GPIO.output(config.gpio_heat, GPIO.HIGH)
+#                GPIO.output(config.gpio_heat, GPIO.HIGH)
+                GPIO.output(config.gpio_heat1, GPIO.LOW)
+                GPIO.output(config.gpio_heat2, GPIO.LOW)
 
     def set_cool(self, value):
         if value:
             self.cool = 1.0
             if gpio_available:
-                GPIO.output(config.gpio_cool, GPIO.LOW)
+#                GPIO.output(config.gpio_cool, GPIO.LOW)
+                pass
         else:
             self.cool = 0.0
             if gpio_available:
-                GPIO.output(config.gpio_cool, GPIO.HIGH)
+#                GPIO.output(config.gpio_cool, GPIO.HIGH)
+                pass
 
     def set_air(self, value):
         if value:
             self.air = 1.0
             if gpio_available:
-                GPIO.output(config.gpio_air, GPIO.LOW)
+#                GPIO.output(config.gpio_air, GPIO.LOW)
+                GPIO.output(config.gpio_air, GPIO.HIGH)
         else:
             self.air = 0.0
             if gpio_available:
-                GPIO.output(config.gpio_air, GPIO.HIGH)
+#                GPIO.output(config.gpio_air, GPIO.HIGH)
+                GPIO.output(config.gpio_air, GPIO.LOW)
 
     def get_state(self):
         state = {
             'runtime': self.runtime,
             'temperature': self.temp_sensor.temperature,
+            'difference': self.temp_sensor.tempdiff,
             'target': self.target,
             'state': self.state,
             'heat': self.heat,
@@ -188,7 +202,8 @@ class Oven (threading.Thread):
 
     def get_door_state(self):
         if gpio_available:
-            return "OPEN" if GPIO.input(config.gpio_door) else "CLOSED"
+#            return "OPEN" if GPIO.input(config.gpio_door) else "CLOSED"
+            return "UNUSED"
         else:
             return "UNKNOWN"
 
@@ -205,21 +220,33 @@ class TempSensorReal(TempSensor):
     def __init__(self, time_step):
         TempSensor.__init__(self, time_step)
         if config.max6675:
-        	log.info("init MAX6675")
-        	self.thermocouple = MAX6675(config.gpio_sensor_cs,
+            log.info("init MAX6675")
+            self.thermocouple = MAX6675(config.gpio_sensor_cs,
                                      config.gpio_sensor_clock,
                                      config.gpio_sensor_data,
                                      "c")
         if config.max31855:
-        	log.info("init MAX31855")
-        	self.thermocouple = MAX31855(config.gpio_sensor_cs,
-                                     config.gpio_sensor_clock,
-                                     config.gpio_sensor_data,
-                                     "c")
+            log.info("init MAX31855")
+            self.thermocouple1 = MAX31855.MAX31855(spi = 
+                SPI.SpiDev(config.spi_port, config.spi_sensor1_cs))
+            self.thermocouple2 = MAX31855.MAX31855(spi = 
+                SPI.SpiDev(config.spi_port, config.spi_sensor2_cs))
+#            self.thermocouple = MAX31855(config.gpio_sensor_cs,
+#                                     config.gpio_sensor_clock,
+#                                     config.gpio_sensor_data,
+#                                     "c")
 
     def run(self):
         while True:
-            self.temperature = self.thermocouple.get()
+            temp1 = self.thermocouple1.readTempC()
+            temp2 = self.thermocouple2.readTempC()
+            self.tempdiff = abs(temp1 - temp2)
+            if ((temp1 is not float('NaN')) and 
+                (temp2 is not float('NaN')) and 
+                (self.tempdiff < 10)):
+                self.temperature = (temp1 + temp2) / 2
+            else:
+                self.temperature = -1.0
             time.sleep(self.time_step)
 
 
