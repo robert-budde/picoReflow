@@ -1,3 +1,11 @@
+Ported to Beaglebone (Kernel 4.1+)
+- install "cape-bone-reflow" from https://github.com/robert-budde/bb.org-overlays
+- add "cape_enable=bone_capemgr.enable_partno=cape-bone-reflow" to /boot/uEnv.txt
+- sudo cp systemd/picoReflow.service /etc/systemd/system/.
+- sudo systemctl enable picoReflow.service
+- sudo systemctl start picoReflow.service
+ 
+
 picoReflow
 ==========
 

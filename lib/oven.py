@@ -33,10 +33,10 @@ try:
 #    GPIO.setwarnings(False)
     GPIO.setup(config.gpio_heat1, GPIO.OUT)
     GPIO.setup(config.gpio_heat2, GPIO.OUT)
-    GPIO.setup(config.gpio_buzzer, GPIO.OUT)
+    GPIO.setup(config.gpio_beeper, GPIO.OUT)
 #    GPIO.setup(config.gpio_cool, GPIO.OUT)
     GPIO.setup(config.gpio_air, GPIO.OUT)
-#    GPIO.setup(config.gpio_door, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(config.gpio_door, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     gpio_available = True
 except ImportError:
@@ -242,8 +242,7 @@ class TempSensorReal(TempSensor):
             temp2 = self.thermocouple2.readTempC()
             self.tempdiff = abs(temp1 - temp2)
             if ((temp1 is not float('NaN')) and 
-                (temp2 is not float('NaN')) and 
-                (self.tempdiff < 10)):
+                (temp2 is not float('NaN')):
                 self.temperature = (temp1 + temp2) / 2
             else:
                 self.temperature = -1.0

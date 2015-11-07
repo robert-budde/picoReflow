@@ -1,0 +1,14 @@
+[Unit]
+
+Description=picoReflow Reflow-Oven Controller
+
+[Service]
+
+Type=simple
+ExecStart=/home/debian/picoReflow/picoreflowd.py
+WorkingDirectory=/home/debian/picoReflow
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
