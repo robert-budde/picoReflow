@@ -241,8 +241,8 @@ class TempSensorReal(TempSensor):
             temp1 = self.thermocouple1.readTempC()
             temp2 = self.thermocouple2.readTempC()
             self.tempdiff = abs(temp1 - temp2)
-            if ((temp1 is not float('NaN')) and 
-                (temp2 is not float('NaN')):
+            if ((temp1 != float('NaN')) and 
+                (temp2 != float('NaN'))):
                 self.temperature = (temp1 + temp2) / 2
             else:
                 self.temperature = -1.0
