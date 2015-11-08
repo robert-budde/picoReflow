@@ -77,6 +77,7 @@ class Oven (threading.Thread):
         self.set_heat(False)
         self.set_cool(False)
         self.set_air(False)
+        self.set_beeper(False)
         self.pid = PID(ki=config.pid_ki, kd=config.pid_kd, kp=config.pid_kp)
 
     def run_profile(self, profile):
@@ -134,12 +135,14 @@ class Oven (threading.Thread):
                 #    self.set_heat(False)
                 #    self.set_cool(self.temp_sensor.temperature > self.target)
 
-                if self.temp_sensor.temperature > 200:
+                if self.temp_sensor.temperature > (self.profile.get_max_temperature() - 15.0):
                     self.set_air(False)
-                elif self.temp_sensor.temperature < 180:
+                elif self.temp_sensor.temperature < (self.profile.get_max_temperature() - 35.0):
                     self.set_air(True)
 
                 if self.runtime >= self.totaltime:
+                    self.set_beeper(True)
+                    time.sleep(2.0)
                     self.reset()
 
             #Capture the last temperature value
@@ -184,6 +187,14 @@ class Oven (threading.Thread):
             if gpio_available:
 #                GPIO.output(config.gpio_air, GPIO.HIGH)
                 GPIO.output(config.gpio_air, GPIO.LOW)
+
+    def set_beeper(self, value):
+        if value:
+            if gpio_available:
+                GPIO.output(config.gpio_beeper, GPIO.HIGH)
+        else:
+            if gpio_available:
+                GPIO.output(config.gpio_beeper, GPIO.LOW)
 
     def get_state(self):
         state = {
@@ -330,6 +341,9 @@ class Profile():
             return prev_point[1] < next_point[1]
         else:
             return False
+
+    def get_max_temperature(self):
+        return max([x for (t, x) in self.data])
 
     def get_target_temperature(self, time):
         if time > self.get_duration():
